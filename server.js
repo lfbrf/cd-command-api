@@ -6,42 +6,49 @@ const port = 3000;
 
 app.use(bodyParser.json());
 
-let cwd = '/';  // Initial current working directory
+let cwd = '/';  // initial current working directory
 const homeDirectory = '';  // Define the home directory
-const history = [];  // To keep track of all commands and resulting directories
-
+let history = [];  // To keep track of all commands and resulting directories
 app.post('/api/cd', (req, res) => {
     const command = req.body.command.trim();  // Trim whitespace from command
+    let newPath;
+
     if (command === 'cd' || command === 'cd ') {
         // Change to home directory
-        cwd = homeDirectory;
+        newPath = homeDirectory;
     } else if (command.startsWith('cd ')) {
         const path = command.slice(3).trim();
+
         if (path.startsWith('/')) {
             // Absolute path
-            cwd = path;
-        } else if (path === '..') {
-            // Move up one directory
-            if (cwd !== '/') {
-                cwd = cwd.substring(0, cwd.lastIndexOf('/')) || '/';
-            }
-        } else if (path.startsWith('../')) {
-            // Handle ../ in relative path
-            const parts = path.split('/');
-            parts.forEach(part => {
-                if (part === '..') {
-                    cwd = cwd.substring(0, cwd.lastIndexOf('/')) || '/';
-                } else if (part !== '.' && part !== '') {
-                    cwd = `${cwd}/${part}`.replace('//', '/');
-                }
-            });
+            newPath = path;
         } else {
             // Relative path
-            cwd = `${cwd}/${path}`.replace('//', '/');
+            newPath = `${cwd}/${path}`.replace(/\/{2,}/g, '/');
         }
+
+        // Normalize newPath to handle ../ and ./
+        const parts = newPath.split('/');
+        const newParts = [];
+
+        for (const part of parts) {
+            if (part === '..') {
+                // Move up one directory
+                newParts.pop();
+            } else if (part === '.' || part === '') {
+                // Skip current directory indicators
+                continue;
+            } else {
+                newParts.push(part);
+            }
+        }
+
+        newPath = `/${newParts.join('/') || ''}`;
     } else {
         return res.status(400).json({ error: 'Invalid command' });
     }
+
+    cwd = newPath;
 
     // Store the command and resulting cwd in history
     history.push({ command, cwd });
@@ -53,6 +60,12 @@ app.get('/api/history', (req, res) => {
     res.json(history);
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
+
+module.exports = { app, resetHistory: () => { history = []; cwd = '/' }, stopServer: () => {
+    if (server) {
+      server.close();
+    }
+  } };
