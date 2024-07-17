@@ -1,4 +1,4 @@
-const { app, changeDirectory } = require('./server');
+const { changeDirectory } = require('./server'); // Assuming changeDirectory is exported from server.js
 const mongoose = require('mongoose');
 
 // Connect to MongoDB before running tests
@@ -36,6 +36,13 @@ describe('changeDirectory function', () => {
         expect(newDirectory).toBe('/p/q');
     });
 
+    test('Move up two directory levels', () => {
+        const initialDirectory = '/p/q/r';
+        const command = 'cd ../..';
+        const newDirectory = changeDirectory(initialDirectory, command);
+        expect(newDirectory).toBe('/p');
+    });
+
     test('Handle ../ in relative path', () => {
         const initialDirectory = '/p/q/r';
         const command = 'cd ../../x';
@@ -48,6 +55,41 @@ describe('changeDirectory function', () => {
         const command = 'cd';
         const newDirectory = changeDirectory(initialDirectory, command);
         expect(newDirectory).toBe('/');
+    });
+
+    test('Change to home directory with tilde', () => {
+        const initialDirectory = '/current';
+        const command = 'cd ~';
+        const newDirectory = changeDirectory(initialDirectory, command);
+        expect(newDirectory).toBe('/');
+    });
+
+    test('Change to specified user\'s home directory', () => {
+        const initialDirectory = '/current';
+        const command = 'cd ~john';
+        const newDirectory = changeDirectory(initialDirectory, command, {username: 'john'});
+        expect(newDirectory).toBe('/');
+    });
+
+    test('Throw error when change to invalid username', () => {
+        const initialDirectory = '/current';
+        const command = 'cd ~john';
+        expect(() => changeDirectory(initialDirectory, command, {username: 'felipe'})).toThrow('No such file or directory');
+    });
+
+    test('Change to the root directory', () => {
+        const initialDirectory = '/current';
+        const command = 'cd /';
+        const newDirectory = changeDirectory(initialDirectory, command);
+        expect(newDirectory).toBe('/');
+    });
+
+    test('Change to previous directory', () => {
+        const initialDirectory = '/p/q/r';
+        const command = 'cd -';
+        const user = { prevCwd: '/previous' };
+        const newDirectory = changeDirectory(initialDirectory, command, user);
+        expect(newDirectory).toBe('/previous');
     });
 
     test('Handle absolute path', () => {
@@ -92,11 +134,10 @@ describe('changeDirectory function', () => {
         expect(newDirectory).toBe('/p/q');
     });
 
-
     test('Handle invalid command', () => {
         const initialDirectory = '/';
         const command = 'invalid-command';
-        expect(() => changeDirectory(initialDirectory, command)).toThrow('Invalid command');
+        expect(() => changeDirectory(initialDirectory, command)).toThrow('Invalid command format: Command must start with "cd "');
     });
 
     test('Handle invalid path starting with //', () => {
@@ -112,27 +153,28 @@ describe('changeDirectory function', () => {
         const newDirectory = changeDirectory(initialDirectory, command);
         expect(newDirectory).toBe('/p/q');
     });
+
     test('Change to root directory from another directory', () => {
         const initialDirectory = '/test';
         const command = 'cd';
         const newDirectory = changeDirectory(initialDirectory, command);
         expect(newDirectory).toBe('/');
     });
-    
+
     test('Navigate up from root directory remains at root', () => {
         const initialDirectory = '/';
         const command = 'cd ..';
         const newDirectory = changeDirectory(initialDirectory, command);
         expect(newDirectory).toBe('/');
     });
-    
+
     test('Handle empty initial directory gracefully', () => {
         const initialDirectory = '';
         const command = 'cd test';
         const newDirectory = changeDirectory(initialDirectory, command);
         expect(newDirectory).toBe('/test');
     });
-    
+
     test('Handle command that does not change directory', () => {
         const initialDirectory = '/test';
         const command = 'cd .';
