@@ -37,6 +37,6 @@
 ### TODO LIST
 - Improve interface to resemble a real terminal
 - Add mkdir feature
-- Once mkdir is implemented, adjust ls command to properly handle file hierarchies
+- Once mkdir is implemented, adjust ls command to properly handle file hierarchies.
 
 ![image](https://github.com/user-attachments/assets/b1193019-6b1b-49c0-a71a-18618ce34ed1)
